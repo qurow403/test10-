@@ -11,7 +11,7 @@
         </button>
 
         <!-- × いいね解除 -->
-        <button class="unlike-btn" @click="unlike" title="いいね解除">
+        <button class="unlike-btn" :disabled="!isLiked" @click="unlike" title="いいね解除">
           <img src="/assets/cross.png" alt="解除" class="icon" />
         </button>
 

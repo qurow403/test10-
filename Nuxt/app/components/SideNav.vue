@@ -23,6 +23,7 @@
       <h3>シェア</h3>
       <form @submit.prevent="handleShare">
         <textarea v-model="message" placeholder="メッセージを入力"></textarea>
+        <span v-if="messageError" class="error">{{ messageError }}</span>
         <button type="submit" class="share-btn">シェアする</button>
       </form>
     </div>
@@ -30,7 +31,6 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
 import { useForm, useField } from 'vee-validate'
 import * as yup from 'yup'
 
@@ -42,7 +42,10 @@ const schema = yup.object({
 })
 
 const { handleSubmit } = useForm({ validationSchema: schema })
-const { value: message } = useField('message')
+const { value: message, errorMessage: messageError } = useField('message', undefined, {
+  validateOnInput: true,
+})
+
 
 const handleShare = handleSubmit((values) => {
   console.log('送信された内容:', values)
@@ -71,7 +74,6 @@ const handleShare = handleSubmit((values) => {
   height: auto;
 }
 
-/* メニュー */
 .menu {
   list-style: none;
   padding: 0;
@@ -135,5 +137,12 @@ textarea {
 
 .share-btn:hover {
   background-color: #715bff;
+}
+
+.error {
+  color: #e74c3c;
+  font-size: 13px;
+  margin-top: 4px;
+  display: block;
 }
 </style>
