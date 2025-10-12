@@ -20,11 +20,7 @@
             </button>
 
             <!-- ✖ いいね解除 -->
-            <button
-              class="unlike-btn"
-              @click="unlike"
-              title="いいね解除"
-            >
+            <button class="unlike-btn" :disabled="!isLiked" @click="unlike" title="いいね解除" >
               <img src="/assets/cross.png" alt="解除" class="icon" />
             </button>
           </div>
@@ -35,11 +31,7 @@
 
       <!-- コメント一覧 -->
       <div class="comment-list">
-        <div
-          v-for="(comment, index) in comments"
-          :key="index"
-          class="comment-item"
-        >
+        <div v-for="(comment, index) in comments" :key="index" class="comment-item">
           <strong>{{ comment.user }}</strong>
           <p>{{ comment.text }}</p>
         </div>
@@ -48,11 +40,7 @@
       <!-- コメント追加フォーム -->
       <form class="comment-form" @submit.prevent="handleCommentSubmit">
         <label for="comment">コメント</label>
-        <textarea
-          id="comment"
-          v-model="comment"
-          placeholder="コメントを入力"
-        ></textarea>
+        <textarea id="comment" v-model="comment" placeholder="コメントを入力"></textarea>
         <span v-if="errorMessage" class="error">{{ errorMessage }}</span>
         <button type="submit" class="comment-btn">コメント</button>
       </form>
@@ -105,10 +93,8 @@ const sharePost = () => {
 }
 
 // ----------------------
-// コメント
+// コメントバリデーション
 // ----------------------
-const comments = ref([{ user: 'test1', text: 'comment' }])
-
 const schema = yup.object({
   comment: yup
     .string()
@@ -116,11 +102,11 @@ const schema = yup.object({
     .max(120, '120文字以内で入力してください'),
 })
 
-const { handleSubmit, errors } = useForm({
-  validationSchema: schema,
-})
-const { value: comment } = useField('comment')
-const errorMessage = ref('')
+// useForm + useField で自動バリデーション
+const { handleSubmit } = useForm({ validationSchema: schema })
+const { value: comment, errorMessage } = useField('comment', undefined, { validateOnInput: true })
+
+const comments = ref([{ user: 'test1', text: 'comment' }])
 
 const handleCommentSubmit = handleSubmit((values) => {
   comments.value.push({
@@ -128,11 +114,6 @@ const handleCommentSubmit = handleSubmit((values) => {
     text: values.comment,
   })
   comment.value = ''
-  errorMessage.value = ''
-})
-
-watch(comment, () => {
-  errorMessage.value = errors.value.comment
 })
 </script>
 
