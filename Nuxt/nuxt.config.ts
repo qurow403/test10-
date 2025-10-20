@@ -5,5 +5,6 @@ export default defineNuxtConfig({
   plugins: [
     '~/plugins/firebase.js',
     '~/plugins/vee-validate.js',
-  ]
+    '~/plugins/axios.js',
+  ],
 })

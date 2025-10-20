@@ -19,9 +19,14 @@
               <span>{{ localLikes }}</span>
             </button>
 
-            <!-- ✖ いいね解除 -->
-            <button class="unlike-btn" :disabled="!isLiked" @click="unlike" title="いいね解除" >
+            <!-- × いいね解除 -->
+            <button class="unlike-btn" :disabled="!isLiked" @click="unlike" title="いいね解除">
               <img src="/assets/cross.png" alt="解除" class="icon" />
+            </button>
+
+            <!-- ↪ シェア -->
+            <button class="share-btn" @click="$emit('share')" title="シェア">
+              <img src="/assets/detail.png" alt="シェア" class="icon" />
             </button>
           </div>
         </div>
@@ -31,7 +36,11 @@
 
       <!-- コメント一覧 -->
       <div class="comment-list">
-        <div v-for="(comment, index) in comments" :key="index" class="comment-item">
+        <div
+          v-for="(comment, index) in comments"
+          :key="index"
+          class="comment-item"
+        >
           <strong>{{ comment.user }}</strong>
           <p>{{ comment.text }}</p>
         </div>
@@ -49,52 +58,66 @@
 </template>
 
 <script setup>
-import { ref, watch } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { useForm, useField } from 'vee-validate'
 import * as yup from 'yup'
 import SideNav from '@/components/SideNav.vue'
 
-// ----------------------
-// ダミーデータ
-// ----------------------
+const { $api } = useNuxtApp()
+
+// ======================
+// 基本設定
+// ======================
 const route = useRoute()
 const postId = route.params.id
 
-const post = ref({
-  id: postId,
-  title: 'test1',
-  content: 'test',
-})
-
-// ❤️いいね機能
+const post = ref({})
 const localLikes = ref(0)
 const isLiked = ref(false)
+const comments = ref([])
 
-// ❤️ いいね押下時
-const toggleLike = () => {
-  if (!isLiked.value) {
-    isLiked.value = true
-    localLikes.value++
+// ======================
+// 投稿データ取得（GET /posts/{id}）
+// ======================
+const fetchPost = async () => {
+  try {
+    const res = await $api.get(`/posts/${postId}`)
+    post.value = res.data.post
+    localLikes.value = res.data.likes_count
+    isLiked.value = res.data.liked ?? false
+    comments.value = res.data.comments
+  } catch (err) {
+    console.error('投稿データ取得エラー:', err)
   }
 }
 
-// ✖ いいね解除
-const unlike = () => {
-  if (isLiked.value) {
-    isLiked.value = false
-    localLikes.value = Math.max(0, localLikes.value - 1)
+onMounted(fetchPost)
+
+// ======================
+// ❤️ いいね切り替え（POST /posts/{id}）
+// ======================
+const toggleLike = async () => {
+  try {
+    const res = await $api.post(`/posts/${postId}`)
+    localLikes.value = res.data.likes_count
+    isLiked.value = res.data.liked
+  } catch (err) {
+    console.error('いいね処理エラー:', err)
   }
 }
 
-// ↪ シェア（仮）
-const sharePost = () => {
-  alert('シェア機能は準備中です！')
+// ======================
+// ✖ いいね解除（unlike）
+// ======================
+const unlike = async () => {
+  if (!isLiked.value) return
+  await toggleLike() // toggleLike が解除も兼ねる
 }
 
-// ----------------------
-// コメントバリデーション
-// ----------------------
+// ======================
+// 📝 コメント投稿（PUT /posts/{id}）
+// ======================
 const schema = yup.object({
   comment: yup
     .string()
@@ -102,18 +125,24 @@ const schema = yup.object({
     .max(120, '120文字以内で入力してください'),
 })
 
-// useForm + useField で自動バリデーション
 const { handleSubmit } = useForm({ validationSchema: schema })
-const { value: comment, errorMessage } = useField('comment', undefined, { validateOnInput: true })
+const { value: comment, errorMessage } = useField('comment', undefined, {
+  validateOnInput: true,
+})
 
-const comments = ref([{ user: 'test1', text: 'comment' }])
-
-const handleCommentSubmit = handleSubmit((values) => {
-  comments.value.push({
-    user: 'test1',
-    text: values.comment,
-  })
-  comment.value = ''
+const handleCommentSubmit = handleSubmit(async (values) => {
+  try {
+    const res = await $api.put(`/posts/${postId}`, {
+      comment: values.comment,
+    })
+    comments.value.push(res.data)
+    comment.value = '' // 入力欄をクリア
+  } catch (err) {
+    console.error('コメント送信エラー:', err)
+    errorMessage.value =
+      err.response?.data?.errors?.comment?.[0] ||
+      'コメント送信に失敗しました'
+  }
 })
 </script>
 
@@ -125,7 +154,6 @@ const handleCommentSubmit = handleSubmit((values) => {
   color: #fff;
 }
 
-/* メインコンテンツ */
 .main-content {
   flex: 1;
   padding: 30px 50px;
@@ -158,13 +186,13 @@ const handleCommentSubmit = handleSubmit((values) => {
   font-size: 18px;
 }
 
+/* ❤️✖↪ 共通アクション */
 .post-actions {
   display: flex;
   align-items: center;
   gap: 10px;
 }
 
-/* アイコン */
 .icon {
   width: 18px;
   height: 18px;
@@ -210,7 +238,21 @@ const handleCommentSubmit = handleSubmit((values) => {
   cursor: not-allowed;
 }
 
-/* 投稿内容 */
+/* ↪シェアボタン */
+.share-btn {
+  background: none;
+  border: none;
+  color: #fff;
+  cursor: pointer;
+  font-size: 18px;
+  display: flex;
+  align-items: center;
+}
+
+.share-btn:hover {
+  color: #60a5fa;
+}
+
 .post-content {
   margin-top: 10px;
   color: #ddd;

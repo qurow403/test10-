@@ -3,6 +3,8 @@
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
+use App\Http\Controllers\PostController;
+
 /*
 |--------------------------------------------------------------------------
 | API Routes
@@ -18,6 +20,9 @@ Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
     return $request->user();
 });
 
-Route::get('/test', function () {
-    return response()->json(['message' => 'API OK']);
+
+Route::middleware('auth:sanctum')->prefix('posts')->group(function () {
+    Route::get('{id}', [PostController::class, 'show']);       // 投稿詳細
+    Route::post('{id}', [PostController::class, 'toggleLike']); // いいね切り替え
+    Route::put('{id}', [PostController::class, 'addComment']);  // コメント投稿
 });
