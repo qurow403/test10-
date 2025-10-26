@@ -31,7 +31,7 @@ return [
     ],
 
     'firebase' => [
-        'credentials' => env('FIREBASE_CREDENTIALS'),
+        'credentials_file' => env('FIREBASE_CREDENTIALS'),
     ],
 
 ];

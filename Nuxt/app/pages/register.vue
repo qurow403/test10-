@@ -53,6 +53,14 @@ const handleRegister = async (values) => {
   try {
     const userCredential = await createUserWithEmailAndPassword($auth, values.email, values.password)
     await updateProfile(userCredential.user, { displayName: values.username })
+
+    const idToken = await userCredential.user.getIdToken()
+
+    await $fetch('http://localhost/api/auth/verify', {
+      method: 'POST',
+      body: { token: idToken },
+    })
+
     alert('登録が完了しました！')
     navigateTo('/')
   } catch (error) {

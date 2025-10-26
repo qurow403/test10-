@@ -40,6 +40,15 @@ const handleLogin = async (values) => {
       values.email,
       values.password
     )
+
+    const idToken = await userCredential.user.getIdToken()
+
+    // Laravel側へトークン送信
+    await $fetch('http://localhost/api/auth/verify', {
+      method: 'POST',
+      body: { token: idToken },
+    })
+
     alert('ログインしました！')
     navigateTo('/')
   } catch (error) {

@@ -4,6 +4,9 @@ namespace App\Providers;
 
 use Illuminate\Support\ServiceProvider;
 
+use Kreait\Firebase\Factory;
+use Kreait\Firebase\Auth;
+
 class AppServiceProvider extends ServiceProvider
 {
     /**
@@ -13,7 +16,12 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register()
     {
-        //
+        $this->app->singleton(Auth::class, function ($app) {
+            $factory = (new Factory)
+                ->withServiceAccount(config('services.firebase.credentials_file'));
+
+            return $factory->createAuth();
+        });
     }
 
     /**
