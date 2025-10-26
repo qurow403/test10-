@@ -66,7 +66,15 @@ const errors = ref({ comment: '' })
 
 const fetchPost = async () => {
   try {
-    const res = await $api.get(`/posts/${postId}`)
+    let token
+    if (process.client && $auth.currentUser) {
+      token = await $auth.currentUser.getIdToken()
+    }
+
+    const res = await $api.get(`/posts/${postId}`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {}
+    })
+
     post.value = res.data.post
     localLikes.value = res.data.likes_count
     isLiked.value = res.data.liked ?? false
@@ -87,14 +95,18 @@ onMounted(fetchPost)
 
 const toggleLike = async () => {
   try {
-    let user
-    if (process.client) user = $auth.currentUser
+    let user, token
+    if (process.client) {
+      user = $auth.currentUser
+      token = await user.getIdToken()
+    }
     if (!user) throw new Error('ログインが必要です')
 
-    const res = await $api.post(`/posts/${postId}`, {
-      uid: user.uid,
-      name: user.displayName || '名無し'
-    })
+    const res = await $api.post(
+      `/posts/${postId}`,
+      { uid: user.uid, name: user.displayName || '名無し' },
+      { headers: { Authorization: `Bearer ${token}` } }
+    )
     localLikes.value = res.data.likes_count
     isLiked.value = res.data.liked
   } catch (err) {
@@ -121,15 +133,19 @@ const onCommentSubmit = async () => {
   }
 
   try {
-    let user
-    if (process.client) user = $auth.currentUser
+    let user, token
+    if (process.client) {
+      user = $auth.currentUser
+      token = await user.getIdToken()
+    }
     if (!user) throw new Error('ログインが必要です')
 
-    const res = await $api.put(`/posts/${postId}`, {
-      comment: comment.value,
-      uid: user.uid,
-      name: user.displayName || '名無し'
-    })
+    const res = await $api.put(
+      `/posts/${postId}`,
+      { comment: comment.value, uid: user.uid, name: user.displayName || '名無し' },
+      { headers: { Authorization: `Bearer ${token}` } }
+    )
+
     comments.value.push(res.data)
     comment.value = ''
   } catch (err) {

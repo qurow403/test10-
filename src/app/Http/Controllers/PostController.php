@@ -18,9 +18,17 @@ class PostController extends Controller
      * @return \Illuminate\Http\Response
      */
     // 投稿詳細（コメント・いいね数付き）
-    public function show($id)
+    public function show(Request $request, $id)
     {
         $post = Post::with(['user', 'likes', 'comments.user'])->findOrFail($id);
+
+        $liked = false;
+        if ($request->has('firebase_uid')) {
+            $user = User::where('firebase_uid', $request->firebase_uid)->first();
+            if ($user) {
+                $liked = $post->likes()->where('user_id', $user->id)->exists();
+            }
+        }
 
         return response()->json([
             'post' => [

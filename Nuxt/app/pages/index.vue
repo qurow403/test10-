@@ -31,7 +31,15 @@ const posts = ref([])
 
 const fetchPosts = async () => {
   try {
-    const res = await $api.get('/posts')
+    let token
+    if (process.client && $auth.currentUser) {
+      token = await $auth.currentUser.getIdToken()
+    }
+
+    const res = await $api.get('/posts', {
+      headers: token ? { Authorization: `Bearer ${token}` } : {}
+    })
+
     posts.value = res.data
   } catch (err) {
     console.error('投稿取得エラー:', err)
@@ -46,8 +54,20 @@ onMounted(fetchPosts)
 
 const updateLikes = async (index, newLikes) => {
   try {
+    let user, token
+    if (process.client && $auth.currentUser) {
+      user = $auth.currentUser
+      token = await user.getIdToken()
+    }
+    if (!user) throw new Error('ログインが必要です')
+
     const post = posts.value[index]
-    const res = await $api.post(`/posts/${post.id}`)
+    const res = await $api.post(
+      `/posts/${post.id}`,
+      { uid: user.uid, name: user.displayName || '名無し' },
+      { headers: { Authorization: `Bearer ${token}` } }
+    )
+
     posts.value[index].likes = res.data?.likes_count ?? post.likes
   } catch (err) {
     console.error('いいね更新エラー:', err)
