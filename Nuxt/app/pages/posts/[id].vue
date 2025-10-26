@@ -1,30 +1,24 @@
 <template>
   <div class="layout">
-    <!-- ① サイドナビ -->
     <SideNav />
 
-    <!-- ② メインコンテンツ -->
     <main class="main-content">
       <h2 class="page-title">コメント</h2>
 
-      <!-- 投稿内容 -->
-      <div class="post-card">
+      <div class="post-card" v-if="post.id">
         <div class="post-header">
-          <h3 class="post-title">{{ post.title }}</h3>
+          <h3 class="post-username">{{ post.username }}</h3>
 
           <div class="post-actions">
-            <!-- ❤️いいね -->
             <button class="like-btn" :class="{ liked: isLiked }" @click="toggleLike">
               <img src="/assets/heart.png" alt="いいね" class="icon" />
               <span>{{ localLikes }}</span>
             </button>
 
-            <!-- × いいね解除 -->
-            <button class="unlike-btn" :disabled="!isLiked" @click="unlike" title="いいね解除">
+            <button class="unlike-btn" :disabled="!isLiked" @click="unlike">
               <img src="/assets/cross.png" alt="解除" class="icon" />
             </button>
 
-            <!-- ↪ シェア -->
             <button class="share-btn" @click="$emit('share')" title="シェア">
               <img src="/assets/detail.png" alt="シェア" class="icon" />
             </button>
@@ -34,23 +28,17 @@
         <p class="post-content">{{ post.content }}</p>
       </div>
 
-      <!-- コメント一覧 -->
       <div class="comment-list">
-        <div
-          v-for="(comment, index) in comments"
-          :key="index"
-          class="comment-item"
-        >
+        <label for="comment">コメント</label>
+        <div v-for="(comment, index) in comments" :key="index" class="comment-item">
           <strong>{{ comment.user }}</strong>
           <p>{{ comment.text }}</p>
         </div>
       </div>
 
-      <!-- コメント追加フォーム -->
-      <form class="comment-form" @submit.prevent="handleCommentSubmit">
-        <label for="comment">コメント</label>
+      <form class="comment-form" @submit.prevent="onCommentSubmit">
         <textarea id="comment" v-model="comment" placeholder="コメントを入力"></textarea>
-        <span v-if="errorMessage" class="error">{{ errorMessage }}</span>
+        <span v-if="errors.comment" class="error">{{ errors.comment }}</span>
         <button type="submit" class="comment-btn">コメント</button>
       </form>
     </main>
@@ -60,15 +48,11 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
-import { useForm, useField } from 'vee-validate'
 import * as yup from 'yup'
 import SideNav from '@/components/SideNav.vue'
+import { useNuxtApp } from '#app'
 
-const { $api } = useNuxtApp()
-
-// ======================
-// 基本設定
-// ======================
+const { $auth, $api } = useNuxtApp()
 const route = useRoute()
 const postId = route.params.id
 
@@ -77,9 +61,9 @@ const localLikes = ref(0)
 const isLiked = ref(false)
 const comments = ref([])
 
-// ======================
-// 投稿データ取得（GET /posts/{id}）
-// ======================
+const comment = ref('')
+const errors = ref({ comment: '' })
+
 const fetchPost = async () => {
   try {
     const res = await $api.get(`/posts/${postId}`)
@@ -90,60 +74,69 @@ const fetchPost = async () => {
   } catch (err) {
     console.error('投稿データ取得エラー:', err)
   }
+
+  // post.value = { id: 1, username: 'test1', content: 'test', likes_count: 0 }
+  // localLikes.value = post.value.likes_count
+  // isLiked.value = false
+  // comments.value = [
+  //   { user: 'test1', text: 'comment' },
+  // ]
 }
 
 onMounted(fetchPost)
 
-// ======================
-// ❤️ いいね切り替え（POST /posts/{id}）
-// ======================
 const toggleLike = async () => {
   try {
-    const res = await $api.post(`/posts/${postId}`)
+    let user
+    if (process.client) user = $auth.currentUser
+    if (!user) throw new Error('ログインが必要です')
+
+    const res = await $api.post(`/posts/${postId}`, {
+      uid: user.uid,
+      name: user.displayName || '名無し'
+    })
     localLikes.value = res.data.likes_count
     isLiked.value = res.data.liked
   } catch (err) {
-    console.error('いいね処理エラー:', err)
+    console.error(err)
   }
 }
 
-// ======================
-// ✖ いいね解除（unlike）
-// ======================
 const unlike = async () => {
   if (!isLiked.value) return
-  await toggleLike() // toggleLike が解除も兼ねる
+  await toggleLike()
 }
 
-// ======================
-// 📝 コメント投稿（PUT /posts/{id}）
-// ======================
 const schema = yup.object({
-  comment: yup
-    .string()
-    .required('コメントは必須です')
-    .max(120, '120文字以内で入力してください'),
+  comment: yup.string().required('コメントは必須です').max(120, '120文字以内で入力してください')
 })
 
-const { handleSubmit } = useForm({ validationSchema: schema })
-const { value: comment, errorMessage } = useField('comment', undefined, {
-  validateOnInput: true,
-})
-
-const handleCommentSubmit = handleSubmit(async (values) => {
+const onCommentSubmit = async () => {
+  errors.value.comment = ''
   try {
+    await schema.validate({ comment: comment.value })
+  } catch (err) {
+    errors.value.comment = err.message
+    return
+  }
+
+  try {
+    let user
+    if (process.client) user = $auth.currentUser
+    if (!user) throw new Error('ログインが必要です')
+
     const res = await $api.put(`/posts/${postId}`, {
-      comment: values.comment,
+      comment: comment.value,
+      uid: user.uid,
+      name: user.displayName || '名無し'
     })
     comments.value.push(res.data)
-    comment.value = '' // 入力欄をクリア
+    comment.value = ''
   } catch (err) {
-    console.error('コメント送信エラー:', err)
-    errorMessage.value =
-      err.response?.data?.errors?.comment?.[0] ||
-      'コメント送信に失敗しました'
+    console.error(err)
+    alert(err.message || 'コメント投稿に失敗しました')
   }
-})
+}
 </script>
 
 <style scoped>
@@ -160,14 +153,12 @@ const handleCommentSubmit = handleSubmit(async (values) => {
   overflow-y: auto;
 }
 
-/* タイトル */
 .page-title {
   font-size: 22px;
   font-weight: bold;
   margin-bottom: 20px;
 }
 
-/* 投稿カード */
 .post-card {
   background-color: #232a36;
   border-radius: 12px;
@@ -177,16 +168,16 @@ const handleCommentSubmit = handleSubmit(async (values) => {
 
 .post-header {
   display: flex;
-  justify-content: space-between;
   align-items: center;
+  justify-content: flex-start;
+  gap: 12px;
 }
 
-.post-title {
+.post-username {
   font-weight: bold;
   font-size: 18px;
 }
 
-/* ❤️✖↪ 共通アクション */
 .post-actions {
   display: flex;
   align-items: center;
@@ -200,7 +191,6 @@ const handleCommentSubmit = handleSubmit(async (values) => {
   vertical-align: middle;
 }
 
-/* ❤️いいねボタン */
 .like-btn {
   background: none;
   border: none;
@@ -218,7 +208,6 @@ const handleCommentSubmit = handleSubmit(async (values) => {
   transform: scale(1.1);
 }
 
-/* ✖解除ボタン */
 .unlike-btn {
   background: none;
   border: none;
@@ -238,7 +227,6 @@ const handleCommentSubmit = handleSubmit(async (values) => {
   cursor: not-allowed;
 }
 
-/* ↪シェアボタン */
 .share-btn {
   background: none;
   border: none;
@@ -259,9 +247,17 @@ const handleCommentSubmit = handleSubmit(async (values) => {
   font-size: 15px;
 }
 
-/* コメント関連 */
 .comment-list {
   margin-bottom: 20px;
+}
+
+.comment-list label {
+  display: block;
+  text-align: center;
+  font-weight: bold;
+  font-size: 16px;
+  margin-bottom: 10px;
+  color: #fff;
 }
 
 .comment-item {

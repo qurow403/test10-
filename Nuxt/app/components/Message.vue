@@ -1,22 +1,19 @@
 <template>
   <div class="message-card">
     <div class="message-header">
-      <p class="message-title">{{ title }}</p>
+      <p class="message-username">{{ username }}</p>
 
       <div class="message-actions">
-        <!-- ❤️いいね -->
         <button class="like-btn" :class="{ liked: isLiked }" @click="toggleLike">
           <img src="/assets/heart.png" alt="いいね" class="icon"/>
           <span>{{ localLikes }}</span>
         </button>
 
-        <!-- × いいね解除 -->
-        <button class="unlike-btn" :disabled="!isLiked" @click="unlike" title="いいね解除">
+        <button class="unlike-btn" :disabled="!isLiked" @click="unlike">
           <img src="/assets/cross.png" alt="解除" class="icon" />
         </button>
 
-        <!-- ↪ シェア -->
-        <button class="share-btn" @click="$emit('share')" title="シェア">
+        <button class="share-btn" @click="sharePost" title="シェア">
           <img src="/assets/detail.png" alt="シェア" class="icon" />
         </button>
       </div>
@@ -26,43 +23,50 @@
 </template>
 
 <script setup>
-import { ref, watch } from 'vue'
+import { ref, watch, onMounted } from 'vue'
+import axios from 'axios'
 
 const props = defineProps({
-  title: String,
+  postId: { type: Number, required: true },
+  username: String,
   content: String,
   likes: Number,
+  initialLiked: { type: Boolean, default: false },
+  uid: { type: String, required: true },
+  name: { type: String, default: '名無し' },
 })
 
 const emit = defineEmits(['update:likes'])
-
-// 内部状態
 const localLikes = ref(props.likes)
-const isLiked = ref(false)
+const isLiked = ref(props.initialLiked)
 
-// 親の props が更新されたら同期
-watch(
-  () => props.likes,
-  (val) => {
-    localLikes.value = val
-  }
-)
+watch(() => props.likes, (val) => {
+  localLikes.value = val
+})
 
-// ❤️ いいね押下時
-const toggleLike = () => {
-  if (!isLiked.value) {
-    isLiked.value = true
-    localLikes.value++
+const toggleLike = async () => {
+  try {
+    const res = await axios.post(`/api/posts/${props.postId}/toggle-like`, {
+      uid: props.uid,
+      name: props.name
+    })
+
+    isLiked.value = res.data.liked
+    localLikes.value = res.data.likes_count
     emit('update:likes', localLikes.value)
+
+  } catch (err) {
+    console.error('いいね更新エラー:', err)
+    alert('いいねの更新に失敗しました')
   }
 }
 
-// ✖ いいね解除
-const unlike = () => {
-  if (isLiked.value) {
-    isLiked.value = false
-    localLikes.value = Math.max(0, localLikes.value - 1)
-    emit('update:likes', localLikes.value)
+const sharePost = async () => {
+  try {
+    await navigator.clipboard.writeText(window.location.href)
+    alert('リンクをコピーしました！')
+  } catch (err) {
+    console.error('共有エラー:', err)
   }
 }
 </script>
@@ -76,30 +80,31 @@ const unlike = () => {
 
 .message-header {
   display: flex;
-  justify-content: space-between;
+  justify-content: flex-start;
   align-items: center;
+  gap: 12px;
 }
 
-.message-title {
+.message-username {
   font-weight: bold;
   font-size: 18px;
+  margin: 0;
 }
 
 .message-actions {
   display: flex;
-  align-items: center;
+  align-items: right;
   gap: 10px;
+  margin-top: 0;
 }
 
-/* 画像アイコン（❤️✖↪） */
 .icon {
-  width: 18px;  /* タイトル文字サイズに合わせる */
+  width: 18px;
   height: 18px;
   object-fit: contain;
   vertical-align: middle;
 }
 
-/* ❤️いいねボタン */
 .like-btn {
   background: none;
   border: none;
@@ -117,7 +122,6 @@ const unlike = () => {
   transform: scale(1.1);
 }
 
-/* ✖解除ボタン */
 .unlike-btn {
   background: none;
   border: none;
@@ -137,7 +141,6 @@ const unlike = () => {
   cursor: not-allowed;
 }
 
-/* ↪シェアボタン */
 .share-btn {
   background: none;
   border: none;

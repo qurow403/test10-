@@ -17,11 +17,7 @@ class User extends Authenticatable
      *
      * @var array<int, string>
      */
-    protected $fillable = [
-        'name',
-        'email',
-        'password',
-    ];
+    protected $fillable = ['firebase_uid', 'name'];
 
     /**
      * The attributes that should be hidden for serialization.
@@ -46,8 +42,9 @@ class User extends Authenticatable
         return $this->hasMany(Post::class);
     }
 
-    public function likedPosts() {
-        return $this->belongsToMany(Post::class, 'likes')->withTimestamps();
+    public function likes()
+    {
+        return $this->hasMany(Like::class);
     }
 
     public function comments() {

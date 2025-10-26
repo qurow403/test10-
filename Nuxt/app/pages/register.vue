@@ -36,18 +36,25 @@
 import AuthHeader from '~/components/AuthHeader.vue'
 import { Form, Field } from 'vee-validate'
 import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth'
-import { computed } from 'vue'
+import * as yup from 'yup'
 
-const { $auth, $schemas } = useNuxtApp()
+const { $auth } = useNuxtApp()
 
-const schemas = computed(() => $schemas || {})
+const registerSchema = yup.object({
+  username: yup
+    .string()
+    .required('ユーザーネームは必須です')
+    .max(20, 'ユーザーネームは20文字以下で入力してください'),
+  email: yup.string().required('メールアドレスは必須です').email('メールアドレスの形式が正しくありません'),
+  password: yup.string().required('パスワードは必須です').min(6, 'パスワードは6文字以上で入力してください'),
+})
 
 const handleRegister = async (values) => {
   try {
     const userCredential = await createUserWithEmailAndPassword($auth, values.email, values.password)
     await updateProfile(userCredential.user, { displayName: values.username })
     alert('登録が完了しました！')
-    navigateTo('/posts')
+    navigateTo('/')
   } catch (error) {
     console.error('登録エラー:', error.message)
     alert('登録に失敗しました：' + error.message)

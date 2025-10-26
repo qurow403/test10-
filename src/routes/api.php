@@ -3,6 +3,7 @@
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
+use App\Http\Controllers\FeedController;
 use App\Http\Controllers\PostController;
 
 /*
@@ -21,8 +22,11 @@ Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
 });
 
 
-Route::middleware('auth:sanctum')->prefix('posts')->group(function () {
-    Route::get('{id}', [PostController::class, 'show']);       // 投稿詳細
-    Route::post('{id}', [PostController::class, 'toggleLike']); // いいね切り替え
-    Route::put('{id}', [PostController::class, 'addComment']);  // コメント投稿
+Route::middleware(['firebase.auth'])->group(function () {
+    Route::get('/', [FeedController::class, 'index']);
+    Route::post('/', [FeedController::class, 'store']);
+
+    Route::get('/posts/{id}', [PostController::class, 'show']);
+    Route::post('/posts/{id}', [PostController::class, 'toggleLike']);
+    Route::put('/posts/{id}', [PostController::class, 'addComment']);
 });

@@ -4,23 +4,13 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 
+use App\Models\User;
 use App\Models\Post;
 use App\Models\Like;
 use App\Models\Comment;
 
 class PostController extends Controller
 {
-    /**
-     * Store a newly created resource in storage.
-     *
-     * @param  \Illuminate\Http\Request  $request
-     * @return \Illuminate\Http\Response
-     */
-    public function store(Request $request)
-    {
-        //
-    }
-
     /**
      * Display the specified resource.
      *
@@ -30,22 +20,16 @@ class PostController extends Controller
     // 投稿詳細（コメント・いいね数付き）
     public function show($id)
     {
-        $post = (object)[
-            'id' => $id,
-            'title' => 'test1',
-            'content' => 'comment',
-            'likes' => collect([]), // 空のコレクション
-            'comments' => collect([
-                (object)[
-                    'user' => (object)['name' => 'test1'],
-                    'content' => 'comment'
-                ]
-            ]),
-        ];
+        $post = Post::with(['user', 'likes', 'comments.user'])->findOrFail($id);
 
         return response()->json([
-            'post' => $post,
+            'post' => [
+                'id' => $post->id,
+                'username' => $post->user->name ?? '名無し',
+                'content' => $post->content,
+            ],
             'likes_count' => $post->likes->count(),
+            'liked' => false,
             'comments' => $post->comments->map(function ($comment) {
                 return [
                     'user' => $comment->user->name ?? '名無し',
@@ -57,7 +41,13 @@ class PostController extends Controller
 
     public function toggleLike(Request $request, $id)
     {
-        $user = $request->user();
+        $request->validate(['uid' => 'required']);
+
+        $user = User::firstOrCreate(
+            ['firebase_uid' => $request->uid],
+            ['name' => $request->name ?? '名無し']
+        );
+
         $post = Post::findOrFail($id);
 
         $existingLike = $post->likes()->where('user_id', $user->id)->first();
@@ -83,17 +73,23 @@ class PostController extends Controller
     {
         $request->validate([
             'comment' => 'required|max:120',
+            'uid' => 'required',
         ]);
+
+        $user = User::firstOrCreate(
+            ['firebase_uid' => $request->uid],
+            ['name' => $request->name ?? '名無し']
+        );
 
         $post = Post::findOrFail($id);
 
         $comment = $post->comments()->create([
-            'user_id' => $request->user()->id,
+            'user_id' => $user->id,
             'content' => $request->comment,
         ]);
 
         return response()->json([
-            'user' => $request->user()->name,
+            'user' => $user->name,
             'text' => $comment->content,
         ]);
     }

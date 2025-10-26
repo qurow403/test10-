@@ -15,6 +15,7 @@ export default defineNuxtPlugin(() => {
   const app = initializeApp(firebaseConfig)
   const auth = getAuth(app)
 
+
   // Nuxt全体で使えるようにprovide
   return {
     provide: {

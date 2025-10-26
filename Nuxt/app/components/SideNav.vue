@@ -12,46 +12,83 @@
         </NuxtLink>
       </li>
       <li>
-        <NuxtLink to="/logout">
+        <button @click="handleLogout" class="logout-btn">
           <img src="/assets/logout.png" alt="ログアウト" class="menu-icon" />
           ログアウト
-        </NuxtLink>
+        </button>
       </li>
     </ul>
 
     <div class="share-section">
       <h3>シェア</h3>
-      <form @submit.prevent="handleShare">
-        <textarea v-model="message" placeholder="メッセージを入力"></textarea>
-        <span v-if="messageError" class="error">{{ messageError }}</span>
-        <button type="submit" class="share-btn">シェアする</button>
+      <form @submit.prevent="onSubmit">
+        <textarea v-model="content" placeholder="メッセージを入力"></textarea>
+        <span v-if="errors.content" class="error">{{ errors.content }}</span>
+        <button type="submit" class="share-btn" :disabled="loading">
+          {{ loading ? '送信中…' : 'シェアする' }}
+        </button>
       </form>
     </div>
   </nav>
 </template>
 
 <script setup>
-import { useForm, useField } from 'vee-validate'
+import { ref } from 'vue'
+import { useNuxtApp } from '#app'
 import * as yup from 'yup'
 
+const emit = defineEmits(['post:created'])
+const { $auth, $api } = useNuxtApp()
+const content = ref('')
+const errors = ref({ content: '' })
+const loading = ref(false)
+
 const schema = yup.object({
-  message: yup
-    .string()
-    .required('メッセージは必須です')
-    .max(120, '120文字以内で入力してください'),
+  content: yup.string().required('メッセージは必須です').max(120, '120文字以内で入力してください')
 })
 
-const { handleSubmit } = useForm({ validationSchema: schema })
-const { value: message, errorMessage: messageError } = useField('message', undefined, {
-  validateOnInput: true,
-})
+const onSubmit = async () => {
+  errors.value.content = ''
+  try {
+    await schema.validate({ content: content.value })
+  } catch (err) {
+    errors.value.content = err.message
+    return
+  }
 
+  try {
+    loading.value = true
+    const user = process.client ? $auth.currentUser : null
+    if (!user) throw new Error('ログインが必要です')
 
-const handleShare = handleSubmit((values) => {
-  console.log('送信された内容:', values)
-  alert('シェアしました！')
-  message.value = ''
-})
+    const res = await $api.post('/posts', {
+      content: content.value,
+      uid: user.uid,
+      name: user.displayName || '名無し'
+    })
+
+    emit('post:created', res.data)
+
+    content.value = ''
+  } catch (err) {
+    console.error('投稿エラー:', err)
+    alert(err.response?.data?.message || err.message || '投稿に失敗しました')
+  } finally {
+    loading.value = false
+  }
+}
+
+const handleLogout = async () => {
+  try {
+    if (process.client) {
+      await $auth.signOut()
+      window.location.href = '/login'
+    }
+  } catch (err) {
+    console.error(err)
+    alert('ログアウトに失敗しました')
+  }
+}
 </script>
 
 <style scoped>
@@ -61,11 +98,11 @@ const handleShare = handleSubmit((values) => {
   padding: 30px 20px;
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
+  align-items: flex-start;
 }
 
 .logo {
-  text-align: center;
+  text-align: left;
   margin-bottom: 40px;
 }
 
@@ -78,33 +115,40 @@ const handleShare = handleSubmit((values) => {
   list-style: none;
   padding: 0;
   margin: 0;
+  margin: 0 0 8px 0;
+  width: 100%;
 }
 
 .menu li {
   margin-bottom: 15px;
 }
 
-.menu a {
+.menu a,
+.logout-btn {
   color: white;
   text-decoration: none;
-  font-size: 16px;
+  font-size: 20px;
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 15px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 10px 15px;
+  border-radius: 8px;
+  transition: background 0.2s;
 }
 
-.menu a:hover {
+.menu a:hover,
+.logout-btn:hover {
   color: #8c9eff;
+  background-color: rgba(255, 255, 255, 0.1);
 }
 
 .menu-icon {
-  width: 20px;
+  width: 24px;
   height: 20px;
   object-fit: contain;
-}
-
-.share-section {
-  margin-top: 30px;
 }
 
 .share-section h3 {

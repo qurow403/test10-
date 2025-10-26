@@ -41,7 +41,7 @@ const handleLogin = async (values) => {
       values.password
     )
     alert('ログインしました！')
-    navigateTo('/posts')
+    navigateTo('/')
   } catch (error) {
     console.error('ログインエラー:', error.message)
     alert('ログインに失敗しました：' + error.message)

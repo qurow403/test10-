@@ -1,15 +1,17 @@
 <template>
   <div class="layout">
-    <SideNav />
+    <SideNav @post:created="fetchPosts" />
 
     <main class="main-content">
       <h2 class="page-title">ホーム</h2>
 
       <div class="post-list">
+        <p v-if="posts.length === 0" class="no-posts">まだ投稿がありません。</p>
+
         <Message
           v-for="(post, index) in posts"
-          :key="index"
-          :title="post.title"
+          :key="post.id"
+          :username="post.username"
           :content="post.content"
           :likes="post.likes"
           @update:likes="updateLikes(index, $event)"
@@ -20,16 +22,38 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import SideNav from '@/components/SideNav.vue'
 import Message from '@/components/Message.vue'
 
-const posts = ref([
-  { title: 'test1', content: 'test', likes: 0 },
-])
+const { $api } = useNuxtApp()
+const posts = ref([])
 
-const updateLikes = (index, newLikes) => {
-  posts.value[index].likes = newLikes
+const fetchPosts = async () => {
+  try {
+    const res = await $api.get('/posts')
+    posts.value = res.data
+  } catch (err) {
+    console.error('投稿取得エラー:', err)
+  }
+
+  // posts.value = [
+  //   { id: 1, username: 'test1', content: 'test', likes: 0 },
+  // ]
+}
+
+onMounted(fetchPosts)
+
+const updateLikes = async (index, newLikes) => {
+  try {
+    const post = posts.value[index]
+    const res = await $api.post(`/posts/${post.id}`)
+    posts.value[index].likes = res.data?.likes_count ?? post.likes
+  } catch (err) {
+    console.error('いいね更新エラー:', err)
+  }
+
+  // posts.value[index].likes += 1
 }
 </script>
 
