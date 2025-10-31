@@ -19,15 +19,22 @@
       </li>
     </ul>
 
-    <div class="share-section">
+    <div v-if="$auth.currentUser" class="share-section">
       <h3>シェア</h3>
-      <form @submit.prevent="onSubmit">
-        <textarea v-model="content" placeholder="メッセージを入力"></textarea>
-        <span v-if="errors.content" class="error">{{ errors.content }}</span>
+      <Form @submit="onSubmit" :validation-schema="schema">
+        <Field name="content" v-slot="{ field, errorMessage }">
+          <textarea v-bind="field" placeholder="メッセージを入力"></textarea>
+          <span class="error">{{ errorMessage }}</span>
+        </Field>
         <button type="submit" class="share-btn" :disabled="loading">
           {{ loading ? '送信中…' : 'シェアする' }}
         </button>
-      </form>
+      </Form>
+    </div>
+
+    <div v-else class="login-warning">
+      <p>投稿するにはログインが必要です。</p>
+      <NuxtLink to="/login" class="login-link">ログインする</NuxtLink>
     </div>
   </nav>
 </template>
@@ -35,41 +42,39 @@
 <script setup>
 import { ref } from 'vue'
 import { useNuxtApp } from '#app'
+import { Form, Field } from 'vee-validate'
 import * as yup from 'yup'
 
 const emit = defineEmits(['post:created'])
 const { $auth, $api } = useNuxtApp()
-const content = ref('')
-const errors = ref({ content: '' })
 const loading = ref(false)
 
 const schema = yup.object({
   content: yup.string().required('メッセージは必須です').max(120, '120文字以内で入力してください')
 })
 
-const onSubmit = async () => {
-  errors.value.content = ''
-  try {
-    await schema.validate({ content: content.value })
-  } catch (err) {
-    errors.value.content = err.message
-    return
-  }
-
+const onSubmit = async (values) => {
+  if (!process.client) return
   try {
     loading.value = true
-    const user = process.client ? $auth.currentUser : null
+    const user = $auth.currentUser
     if (!user) throw new Error('ログインが必要です')
 
-    const res = await $api.post('/posts', {
-      content: content.value,
-      uid: user.uid,
-      name: user.displayName || '名無し'
-    })
+    const token = await user.getIdToken()
+
+    const res = await $api.post(
+      '/posts',
+      { content: values.content, uid: user.uid, name: user.displayName || '名無し' },
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      }
+)
 
     emit('post:created', res.data)
-
-    content.value = ''
+    values.content = ''
   } catch (err) {
     console.error('投稿エラー:', err)
     alert(err.response?.data?.message || err.message || '投稿に失敗しました')

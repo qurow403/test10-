@@ -46,13 +46,17 @@ const handleLogin = async (values) => {
     // Laravel側へトークン送信
     await $fetch('http://localhost/api/auth/verify', {
       method: 'POST',
-      body: { token: idToken },
+      headers: {
+        'Authorization': `Bearer ${idToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: {},
     })
 
     alert('ログインしました！')
     navigateTo('/')
   } catch (error) {
-    console.error('ログインエラー:', error.message)
+    console.error('ログインエラー:', error)
     alert('ログインに失敗しました：' + error.message)
   }
 }

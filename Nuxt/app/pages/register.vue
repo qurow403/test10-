@@ -58,13 +58,17 @@ const handleRegister = async (values) => {
 
     await $fetch('http://localhost/api/auth/verify', {
       method: 'POST',
-      body: { token: idToken },
+      headers: {
+        'Authorization': `Bearer ${idToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: {},
     })
 
     alert('登録が完了しました！')
     navigateTo('/')
   } catch (error) {
-    console.error('登録エラー:', error.message)
+    console.error('登録エラー:', error)
     alert('登録に失敗しました：' + error.message)
   }
 }

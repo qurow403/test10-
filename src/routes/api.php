@@ -2,8 +2,8 @@
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\FirebaseAuthController;
 
+use App\Http\Controllers\FirebaseAuthController;
 use App\Http\Controllers\FeedController;
 use App\Http\Controllers\PostController;
 
@@ -22,10 +22,11 @@ use App\Http\Controllers\PostController;
 Route::post('/auth/verify', [FirebaseAuthController::class, 'verifyToken']);
 
 Route::middleware(['firebase.auth'])->group(function () {
-    Route::get('/', [FeedController::class, 'index']);
-    Route::post('/', [FeedController::class, 'store']);
+    Route::get('/posts', [FeedController::class, 'index']);
+    Route::post('/posts', [FeedController::class, 'store']);
 
     Route::get('/posts/{id}', [PostController::class, 'show']);
-    Route::post('/posts/{id}', [PostController::class, 'toggleLike']);
+    Route::post('/posts/{id}/like', [PostController::class, 'toggleLike']);
     Route::put('/posts/{id}', [PostController::class, 'addComment']);
 });
+

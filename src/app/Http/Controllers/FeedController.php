@@ -18,6 +18,7 @@ class FeedController extends Controller
                 'username' => $post->user->name ?? '名無し',
                 'content' => $post->content,
                 'likes' => $post->likes->count(),
+                'uid' => $post->user->firebase_uid ?? '',
             ];
         }));
     }
@@ -44,6 +45,8 @@ class FeedController extends Controller
             'username' => $user->name,
             'content' => $post->content,
             'likes' => 0,
+            'uid' => $request->uid,
+            'name' => $user->name,
         ]);
     }
 }

@@ -5,7 +5,6 @@ namespace App\Http\Middleware;
 use Closure;
 use Illuminate\Http\Request;
 use Kreait\Firebase\Auth as FirebaseAuth;
-use Kreait\Firebase\Factory;
 
 class FirebaseAuthMiddleware
 {
@@ -31,7 +30,10 @@ class FirebaseAuthMiddleware
             $firebaseUid = $verifiedIdToken->claims()->get('sub');
             $request->merge(['firebase_uid' => $firebaseUid]);
         } catch (\Exception $e) {
-            return response()->json(['error' => 'Invalid token', 'message' => $e->getMessage()], 401);
+            return response()->json([
+                'error' => 'Invalid token',
+                'message' => $e->getMessage()
+            ], 401);
         }
 
         return $next($request);
@@ -39,7 +41,6 @@ class FirebaseAuthMiddleware
 
     public function __construct(FirebaseAuth $auth)
     {
-        $factory = (new Factory)->withServiceAccount(config('services.firebase.credentials'));
-        $this->auth = $factory->createAuth();
+        $this->auth = $auth;
     }
 }

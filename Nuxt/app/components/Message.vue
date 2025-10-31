@@ -24,7 +24,9 @@
 
 <script setup>
 import { ref, watch, onMounted } from 'vue'
-import axios from 'axios'
+const { $api, $auth } = useNuxtApp()
+// import axios from 'axios'
+
 
 const props = defineProps({
   postId: { type: Number, required: true },
@@ -46,18 +48,44 @@ watch(() => props.likes, (val) => {
 
 const toggleLike = async () => {
   try {
-    const res = await axios.post(`/api/posts/${props.postId}/toggle-like`, {
-      uid: props.uid,
-      name: props.name
-    })
+    const user = $auth.currentUser
+    if (!user) throw new Error('ログインが必要です')
+    const token = await user.getIdToken()
+
+    const res = await $api.post(
+      `/posts/${props.postId}/like`,
+      { uid: props.uid, name: props.name },
+      { headers: { Authorization: `Bearer ${token}` } } // 🔹 ヘッダー必須
+    )
 
     isLiked.value = res.data.liked
     localLikes.value = res.data.likes_count
     emit('update:likes', localLikes.value)
-
   } catch (err) {
-    console.error('いいね更新エラー:', err)
+    console.error('いいね更新エラー:', err.response?.data || err.message)
     alert('いいねの更新に失敗しました')
+  }
+}
+
+const unlike = async () => {
+  try {
+    const user = $auth.currentUser
+    if (!user) throw new Error('ログインが必要です')
+    const token = await user.getIdToken()
+
+    const res = await $api.post(
+      `/posts/${props.postId}/like`, // トグルAPI
+      { uid: props.uid, name: props.name },
+      { headers: { Authorization: `Bearer ${token}` } }
+    )
+
+    // 明示的に解除された状態を反映
+    isLiked.value = res.data.liked // falseになる
+    localLikes.value = res.data.likes_count
+    emit('update:likes', localLikes.value)
+  } catch (err) {
+    console.error('いいね解除エラー:', err.response?.data || err.message)
+    alert('いいねの解除に失敗しました')
   }
 }
 

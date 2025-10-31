@@ -1,6 +1,6 @@
 <template>
-  <div class="layout">
-    <SideNav @post:created="fetchPosts" />
+  <div v-if="isAuthenticated" class="layout">
+    <SideNav @post:created="handlePostCreated" />
 
     <main class="main-content">
       <h2 class="page-title">ホーム</h2>
@@ -11,13 +11,22 @@
         <Message
           v-for="(post, index) in posts"
           :key="post.id"
+          :post-id="post.id"
           :username="post.username"
           :content="post.content"
           :likes="post.likes"
+          :initial-liked="post.liked"
+          :uid="post.uid"
+          :name="post.name"
           @update:likes="updateLikes(index, $event)"
         />
       </div>
     </main>
+  </div>
+
+  <div v-else class="login-redirect">
+    <p>投稿を見るにはログインが必要です。</p>
+    <NuxtLink to="/login" class="login-link">ログインする</NuxtLink>
   </div>
 </template>
 
@@ -26,23 +35,32 @@ import { ref, onMounted } from 'vue'
 import SideNav from '@/components/SideNav.vue'
 import Message from '@/components/Message.vue'
 
-const { $api } = useNuxtApp()
+const { $api, $auth } = useNuxtApp()
 const posts = ref([])
+const isAuthenticated = ref(false)
 
 const fetchPosts = async () => {
   try {
-    let token
-    if (process.client && $auth.currentUser) {
-      token = await $auth.currentUser.getIdToken()
+    const user = $auth.currentUser
+    if (!user) {
+      isAuthenticated.value = false
+      return
     }
 
+    const token = await user.getIdToken()
     const res = await $api.get('/posts', {
-      headers: token ? { Authorization: `Bearer ${token}` } : {}
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
     })
 
     posts.value = res.data
+    isAuthenticated.value = true
   } catch (err) {
     console.error('投稿取得エラー:', err)
+    if (err.response?.status === 401) {
+      isAuthenticated.value = false
+    }
   }
 
   // posts.value = [
@@ -50,27 +68,30 @@ const fetchPosts = async () => {
   // ]
 }
 
+
+const handlePostCreated = (newPost) => {
+  posts.value.unshift(newPost)
+}
+
 onMounted(fetchPosts)
 
 const updateLikes = async (index, newLikes) => {
   try {
-    let user, token
-    if (process.client && $auth.currentUser) {
-      user = $auth.currentUser
-      token = await user.getIdToken()
-    }
+    const user = $auth.currentUser
     if (!user) throw new Error('ログインが必要です')
 
+    const token = await user.getIdToken()
     const post = posts.value[index]
+
     const res = await $api.post(
-      `/posts/${post.id}`,
+      `/posts/${post.id}/like`, // ✅ 統一！
       { uid: user.uid, name: user.displayName || '名無し' },
       { headers: { Authorization: `Bearer ${token}` } }
     )
 
-    posts.value[index].likes = res.data?.likes_count ?? post.likes
+    posts.value[index].likes = res.data.likes_count
   } catch (err) {
-    console.error('いいね更新エラー:', err)
+    console.error('いいね更新エラー:', err.response?.data || err.message)
   }
 
   // posts.value[index].likes += 1
@@ -101,5 +122,16 @@ const updateLikes = async (index, newLikes) => {
   display: flex;
   flex-direction: column;
   gap: 20px;
+}
+
+.login-redirect {
+  color: white;
+  text-align: center;
+  padding-top: 200px;
+}
+.login-link {
+  color: #8c9eff;
+  text-decoration: underline;
+  cursor: pointer;
 }
 </style>

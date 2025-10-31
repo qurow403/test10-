@@ -1,47 +1,52 @@
 <template>
-  <div class="layout">
-    <SideNav />
+  <div v-if="loading" class="loading">
+    <p>読み込み中...</p>
+  </div>
 
-    <main class="main-content">
-      <h2 class="page-title">コメント</h2>
+  <div v-else>
+    <div class="layout" v-if="user">
+      <SideNav />
 
-      <div class="post-card" v-if="post.id">
-        <div class="post-header">
-          <h3 class="post-username">{{ post.username }}</h3>
+      <main class="main-content">
+        <h2 class="page-title">コメント</h2>
 
-          <div class="post-actions">
-            <button class="like-btn" :class="{ liked: isLiked }" @click="toggleLike">
-              <img src="/assets/heart.png" alt="いいね" class="icon" />
-              <span>{{ localLikes }}</span>
-            </button>
+        <!-- 投稿一覧 -->
+        <section class="post-section">
+          <Message
+            v-for="(p, index) in posts"
+            :key="p.id"
+            :post-id="p.id"
+            :username="p.username"
+            :content="p.content"
+            :likes="p.likes"
+            :uid="p.uid"
+            :name="p.name"
+            @update:likes="updatePostLikes(index, $event)"
+          />
+        </section>
 
-            <button class="unlike-btn" :disabled="!isLiked" @click="unlike">
-              <img src="/assets/cross.png" alt="解除" class="icon" />
-            </button>
-
-            <button class="share-btn" @click="$emit('share')" title="シェア">
-              <img src="/assets/detail.png" alt="シェア" class="icon" />
-            </button>
+        <section class="comment-section">
+          <h3 class="sub-title">コメント</h3>
+          <div class="comment-list">
+            <div v-for="(comment, index) in comments" :key="index" class="comment-item">
+              <strong>{{ comment.user }}</strong>
+              <p>{{ comment.text }}</p>
+            </div>
           </div>
-        </div>
 
-        <p class="post-content">{{ post.content }}</p>
-      </div>
+          <form class="comment-form" @submit.prevent="onCommentSubmit">
+            <textarea id="comment" v-model="comment" placeholder="コメントを入力"></textarea>
+            <span v-if="errors.comment" class="error">{{ errors.comment }}</span>
+            <button type="submit" class="comment-btn">コメント</button>
+          </form>
+        </section>
+      </main>
+    </div>
 
-      <div class="comment-list">
-        <label for="comment">コメント</label>
-        <div v-for="(comment, index) in comments" :key="index" class="comment-item">
-          <strong>{{ comment.user }}</strong>
-          <p>{{ comment.text }}</p>
-        </div>
-      </div>
-
-      <form class="comment-form" @submit.prevent="onCommentSubmit">
-        <textarea id="comment" v-model="comment" placeholder="コメントを入力"></textarea>
-        <span v-if="errors.comment" class="error">{{ errors.comment }}</span>
-        <button type="submit" class="comment-btn">コメント</button>
-      </form>
-    </main>
+    <div v-else class="login-redirect">
+      <p>投稿を見るにはログインが必要です。</p>
+      <NuxtLink to="/login" class="login-link">ログインする</NuxtLink>
+    </div>
   </div>
 </template>
 
@@ -50,77 +55,56 @@ import { ref, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import * as yup from 'yup'
 import SideNav from '@/components/SideNav.vue'
+import Message from '@/components/Message.vue'
 import { useNuxtApp } from '#app'
 
 const { $auth, $api } = useNuxtApp()
 const route = useRoute()
 const postId = route.params.id
 
-const post = ref({})
-const localLikes = ref(0)
-const isLiked = ref(false)
+// 状態
+const user = ref(null)
+const posts = ref([])
 const comments = ref([])
-
 const comment = ref('')
 const errors = ref({ comment: '' })
+const loading = ref(true)
 
-const fetchPost = async () => {
+// 投稿一覧取得
+const fetchPosts = async () => {
   try {
-    let token
-    if (process.client && $auth.currentUser) {
-      token = await $auth.currentUser.getIdToken()
-    }
-
-    const res = await $api.get(`/posts/${postId}`, {
-      headers: token ? { Authorization: `Bearer ${token}` } : {}
+    const token = await user.value.getIdToken()
+    const res = await $api.get('/posts', {
+      headers: { Authorization: `Bearer ${token}` },
     })
-
-    post.value = res.data.post
-    localLikes.value = res.data.likes_count
-    isLiked.value = res.data.liked ?? false
-    comments.value = res.data.comments
+    posts.value = res.data
   } catch (err) {
-    console.error('投稿データ取得エラー:', err)
+    console.error('投稿一覧取得エラー:', err)
   }
-
-  // post.value = { id: 1, username: 'test1', content: 'test', likes_count: 0 }
-  // localLikes.value = post.value.likes_count
-  // isLiked.value = false
-  // comments.value = [
-  //   { user: 'test1', text: 'comment' },
-  // ]
 }
 
-onMounted(fetchPost)
-
-const toggleLike = async () => {
+// コメント取得（対象投稿のみ）
+const fetchPostComments = async () => {
   try {
-    let user, token
-    if (process.client) {
-      user = $auth.currentUser
-      token = await user.getIdToken()
-    }
-    if (!user) throw new Error('ログインが必要です')
-
-    const res = await $api.post(
-      `/posts/${postId}`,
-      { uid: user.uid, name: user.displayName || '名無し' },
-      { headers: { Authorization: `Bearer ${token}` } }
-    )
-    localLikes.value = res.data.likes_count
-    isLiked.value = res.data.liked
+    const token = await user.value.getIdToken()
+    const res = await $api.get(`/posts/${postId}`, {
+      headers: { Authorization: `Bearer ${token}` },
+      params: { firebase_uid: user.value.uid },
+    })
+    comments.value = res.data.comments || []
   } catch (err) {
-    console.error(err)
+    console.error('コメント取得エラー:', err)
   }
 }
 
-const unlike = async () => {
-  if (!isLiked.value) return
-  await toggleLike()
+// いいね更新
+const updatePostLikes = (index, newLikes) => {
+  posts.value[index].likes = newLikes
 }
 
+// コメント投稿
 const schema = yup.object({
-  comment: yup.string().required('コメントは必須です').max(120, '120文字以内で入力してください')
+  comment: yup.string().required('コメントは必須です').max(120, '120文字以内で入力してください'),
 })
 
 const onCommentSubmit = async () => {
@@ -133,26 +117,42 @@ const onCommentSubmit = async () => {
   }
 
   try {
-    let user, token
-    if (process.client) {
-      user = $auth.currentUser
-      token = await user.getIdToken()
-    }
-    if (!user) throw new Error('ログインが必要です')
-
+    const token = await user.value.getIdToken()
     const res = await $api.put(
       `/posts/${postId}`,
-      { comment: comment.value, uid: user.uid, name: user.displayName || '名無し' },
-      { headers: { Authorization: `Bearer ${token}` } }
+      { comment: comment.value, uid: user.value.uid, name: user.value.displayName || '名無し' },
+      { headers: { Authorization: `Bearer ${token}` } },
     )
-
     comments.value.push(res.data)
     comment.value = ''
   } catch (err) {
-    console.error(err)
-    alert(err.message || 'コメント投稿に失敗しました')
+    console.error('コメント投稿失敗:', err)
+    alert('コメント投稿に失敗しました')
   }
 }
+
+// 初期化
+onMounted(async () => {
+  if (!process.client) return
+
+  const current = $auth.currentUser
+  if (current) {
+    user.value = current
+    await fetchPosts()
+    await fetchPostComments()
+  } else {
+    $auth.onAuthStateChanged(async (u) => {
+      if (u) {
+        user.value = u
+        await fetchPosts()
+        await fetchPostComments()
+      } else {
+        loading.value = false
+      }
+    })
+  }
+  loading.value = false
+})
 </script>
 
 <style scoped>
@@ -175,105 +175,29 @@ const onCommentSubmit = async () => {
   margin-bottom: 20px;
 }
 
-.post-card {
-  background-color: #232a36;
-  border-radius: 12px;
-  padding: 15px 20px;
-  margin-bottom: 20px;
-}
-
-.post-header {
-  display: flex;
-  align-items: center;
-  justify-content: flex-start;
-  gap: 12px;
-}
-
-.post-username {
+.sub-title {
+  font-size: 18px;
   font-weight: bold;
-  font-size: 18px;
-}
-
-.post-actions {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.icon {
-  width: 18px;
-  height: 18px;
-  object-fit: contain;
-  vertical-align: middle;
-}
-
-.like-btn {
-  background: none;
-  border: none;
-  color: #aaa;
-  font-size: 16px;
-  cursor: pointer;
-  transition: transform 0.1s ease, color 0.3s;
-  display: flex;
-  align-items: center;
-  gap: 5px;
-}
-
-.like-btn.liked {
-  color: #f87171;
-  transform: scale(1.1);
-}
-
-.unlike-btn {
-  background: none;
-  border: none;
+  margin-top: 30px;
+  margin-bottom: 10px;
   color: #fff;
-  cursor: pointer;
-  font-size: 16px;
+  text-align: center;
+}
+
+/* 投稿一覧 */
+.post-section {
   display: flex;
-  align-items: center;
+  flex-direction: column;
+  gap: 20px;
 }
 
-.unlike-btn:hover {
-  color: #f87171;
-}
-
-.unlike-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.share-btn {
-  background: none;
-  border: none;
-  color: #fff;
-  cursor: pointer;
-  font-size: 18px;
-  display: flex;
-  align-items: center;
-}
-
-.share-btn:hover {
-  color: #60a5fa;
-}
-
-.post-content {
-  margin-top: 10px;
-  color: #ddd;
-  font-size: 15px;
+/* コメント部分 */
+.comment-section {
+  margin-top: 30px;
 }
 
 .comment-list {
   margin-bottom: 20px;
-}
-
-.comment-list label {
-  display: block;
-  text-align: center;
-  font-weight: bold;
-  font-size: 16px;
-  margin-bottom: 10px;
-  color: #fff;
 }
 
 .comment-item {
@@ -318,5 +242,14 @@ const onCommentSubmit = async () => {
 .error {
   color: #ff7070;
   font-size: 13px;
+}
+
+.loading {
+  display: flex;
+  height: 100vh;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  background-color: #1a1f29;
 }
 </style>

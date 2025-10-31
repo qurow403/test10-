@@ -6,8 +6,6 @@ use Illuminate\Http\Request;
 
 use App\Models\User;
 use App\Models\Post;
-use App\Models\Like;
-use App\Models\Comment;
 
 class PostController extends Controller
 {
@@ -37,13 +35,11 @@ class PostController extends Controller
                 'content' => $post->content,
             ],
             'likes_count' => $post->likes->count(),
-            'liked' => false,
-            'comments' => $post->comments->map(function ($comment) {
-                return [
-                    'user' => $comment->user->name ?? '名無し',
-                    'text' => $comment->content,
-                ];
-            }),
+            'liked' => $liked,
+            'comments' => $post->comments->map(fn($c) => [
+                'user' => $c->user->name ?? '名無し',
+                'text' => $c->content,
+            ]),
         ]);
     }
 
@@ -58,13 +54,11 @@ class PostController extends Controller
 
         $post = Post::findOrFail($id);
 
-        $existingLike = $post->likes()->where('user_id', $user->id)->first();
-
-        if ($existingLike) {
-            $existingLike->delete();
+        if ($post->likes()->where('user_id', $user->id)->exists()) {
+            $post->likes()->detach($user->id);
             $liked = false;
         } else {
-            $post->likes()->create(['user_id' => $user->id]);
+            $post->likes()->attach($user->id);
             $liked = true;
         }
 
