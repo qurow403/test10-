@@ -5,8 +5,6 @@ Docker ビルド
 1.git clone git@github.com:qurow403/test10-.git
 2.docker-compose up -d --build
 
----
-
 Lavavel 環境構築
 1.docker-compose exec php bash
 2.composer install
@@ -22,7 +20,6 @@ Lavavel 環境構築
 6.php artisan migrate
 7.php artisan test
 
----
 
 Nuxt 環境構築
 1.node -v
@@ -35,7 +32,6 @@ Nuxt 環境構築
 
 5.yarn run dev
 
----
 
 Firebase 認証について
 
@@ -44,12 +40,8 @@ Firebase 認証について
 - ファイル例: `src/storage/firebase/firebase-adminsdk.json`
 - `.env` に正しいパスが設定されていないと、Firebase 認証は動作しません。
 
----
-
 # ER図
 ![ER図](docs/er_diagram.png)
-
----
 
 # 使用技術
 ・PHP 8.4.3
