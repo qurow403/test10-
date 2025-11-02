@@ -1,7 +1,10 @@
 <template>
   <header class="auth-header">
-    <h1 class="logo">SHARE</h1>
-    <nav>
+    <div class="logo-container">
+      <img src="/assets/logo.png" alt="SHAREロゴ" class="logo-img" />
+    </div>
+
+    <nav class="right-nav">
       <NuxtLink to="/register" class="link">新規登録</NuxtLink>
       <NuxtLink to="/login" class="link">ログイン</NuxtLink>
     </nav>
@@ -16,15 +19,20 @@
   justify-content: space-between;
   align-items: center;
   padding: 20px 50px;
+  width: 100%;
+  box-sizing: border-box;
 }
 
-.logo {
-  font-family: 'Fredoka One', cursive;
-  font-size: 40px;
-  letter-spacing: 2px;
+.logo-container {
+  display: flex;
+  align-items: center;
 }
 
-nav {
+.logo-img {
+  height: 40px;
+}
+
+.right-nav {
   display: flex;
   gap: 20px;
 }

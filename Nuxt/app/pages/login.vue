@@ -97,8 +97,8 @@ button {
   color: white;
   border: none;
   padding: 12px 0;
-  width: 100%;
-  border-radius: 8px;
+  width: 200px;
+  border-radius: 20px;
   font-size: 16px;
   cursor: pointer;
   box-shadow: 0 4px 0 #2e2c72;
@@ -115,3 +115,4 @@ button:hover {
   display: block;
 }
 </style>
+

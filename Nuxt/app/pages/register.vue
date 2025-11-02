@@ -54,7 +54,8 @@ const handleRegister = async (values) => {
     const userCredential = await createUserWithEmailAndPassword($auth, values.email, values.password)
     await updateProfile(userCredential.user, { displayName: values.username })
 
-    const idToken = await userCredential.user.getIdToken()
+    const idToken = await userCredential.user.getIdToken(true)
+    console.log(idToken)
 
     await $fetch('http://localhost/api/auth/verify', {
       method: 'POST',
@@ -109,8 +110,8 @@ button {
   color: white;
   border: none;
   padding: 12px 0;
-  width: 100%;
-  border-radius: 8px;
+  width: 200px;
+  border-radius: 20px;
   font-size: 16px;
   cursor: pointer;
   box-shadow: 0 4px 0 #2e2c72;
@@ -118,6 +119,7 @@ button {
 
 button:hover {
   background-color: #4733d6;
+  transform: translateY(-2px);
 }
 
 .error {
