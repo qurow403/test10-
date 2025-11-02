@@ -41,7 +41,7 @@ Firebase 認証について
 - `.env` に正しいパスが設定されていないと、Firebase 認証は動作しません。
 
 # ER図
-![ER図](docs/er_diagram.png)
+![ER図](src/docs/er_diagram.png)
 
 # 使用技術
 ・PHP 8.4.3
@@ -51,8 +51,6 @@ Firebase 認証について
 ・vue@3.5.22
 ・Node.js v22.19.0
 ・Yarn 1.22.22
-
----
 
 # URL
 ・開発環境：http://localhost/  http://localhost:3000
