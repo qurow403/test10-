@@ -10,7 +10,6 @@
       <main class="main-content">
         <h2 class="page-title">コメント</h2>
 
-        <!-- 投稿一覧 -->
         <section class="post-section">
           <Message
             v-for="(p, index) in posts"
@@ -62,7 +61,6 @@ const { $auth, $api } = useNuxtApp()
 const route = useRoute()
 const postId = route.params.id
 
-// 状態
 const user = ref(null)
 const posts = ref([])
 const comments = ref([])
@@ -70,7 +68,6 @@ const comment = ref('')
 const errors = ref({ comment: '' })
 const loading = ref(true)
 
-// 投稿一覧取得
 const fetchPosts = async () => {
   try {
     const token = await user.value.getIdToken()
@@ -83,7 +80,6 @@ const fetchPosts = async () => {
   }
 }
 
-// コメント取得（対象投稿のみ）
 const fetchPostComments = async () => {
   try {
     const token = await user.value.getIdToken()
@@ -97,12 +93,10 @@ const fetchPostComments = async () => {
   }
 }
 
-// いいね更新
 const updatePostLikes = (index, newLikes) => {
   posts.value[index].likes = newLikes
 }
 
-// コメント投稿
 const schema = yup.object({
   comment: yup.string().required('コメントは必須です').max(120, '120文字以内で入力してください'),
 })
@@ -131,7 +125,6 @@ const onCommentSubmit = async () => {
   }
 }
 
-// 初期化
 onMounted(async () => {
   if (!process.client) return
 
@@ -184,14 +177,12 @@ onMounted(async () => {
   text-align: center;
 }
 
-/* 投稿一覧 */
 .post-section {
   display: flex;
   flex-direction: column;
   gap: 20px;
 }
 
-/* コメント部分 */
 .comment-section {
   margin-top: 30px;
 }

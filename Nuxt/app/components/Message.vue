@@ -25,8 +25,6 @@
 <script setup>
 import { ref, watch, onMounted } from 'vue'
 const { $api, $auth } = useNuxtApp()
-// import axios from 'axios'
-
 
 const props = defineProps({
   postId: { type: Number, required: true },
@@ -55,7 +53,7 @@ const toggleLike = async () => {
     const res = await $api.post(
       `/posts/${props.postId}/like`,
       { uid: props.uid, name: props.name },
-      { headers: { Authorization: `Bearer ${token}` } } // 🔹 ヘッダー必須
+      { headers: { Authorization: `Bearer ${token}` } }
     )
 
     isLiked.value = res.data.liked
@@ -74,13 +72,12 @@ const unlike = async () => {
     const token = await user.getIdToken()
 
     const res = await $api.post(
-      `/posts/${props.postId}/like`, // トグルAPI
+      `/posts/${props.postId}/like`,
       { uid: props.uid, name: props.name },
       { headers: { Authorization: `Bearer ${token}` } }
     )
 
-    // 明示的に解除された状態を反映
-    isLiked.value = res.data.liked // falseになる
+    isLiked.value = res.data.liked
     localLikes.value = res.data.likes_count
     emit('update:likes', localLikes.value)
   } catch (err) {

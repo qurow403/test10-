@@ -15,7 +15,6 @@ class PostController extends Controller
      * @param  int  $id
      * @return \Illuminate\Http\Response
      */
-    // 投稿詳細（コメント・いいね数付き）
     public function show(Request $request, $id)
     {
         $post = Post::with(['user', 'likes', 'comments.user'])->findOrFail($id);

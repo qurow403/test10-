@@ -84,7 +84,7 @@ const updateLikes = async (index, newLikes) => {
     const post = posts.value[index]
 
     const res = await $api.post(
-      `/posts/${post.id}/like`, // ✅ 統一！
+      `/posts/${post.id}/like`,
       { uid: user.uid, name: user.displayName || '名無し' },
       { headers: { Authorization: `Bearer ${token}` } }
     )
